@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Shopping Cart - Shop Fusion</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .cart-container { max-width: 900px; margin: 30px auto; background: var(--card-bg, #fff); padding: 30px; border-radius: 8px; box-shadow: var(--shadow, 0 2px 10px rgba(0,0,0,0.05)); }
+    .cart-item-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-color, #e9ecef); }
+    .cart-summary { margin-top: 25px; padding-top: 20px; border-top: 2px solid var(--border-color, #e9ecef); text-align: right; }
+    .btn-checkout { background-color: #ff9f00; color: white; border: none; padding: 12px 25px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+    .btn-checkout:hover { background-color: #fb8c00; }
+    
+    /* Quantity Control Buttons */
+    .qty-control { display: flex; align-items: center; gap: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; }
+    .qty-btn { background: #fff; border: 1px solid #94a3b8; width: 24px; height: 24px; font-weight: bold; cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+    .qty-btn:hover { background: #e2e8f0; }
+
+    .btn-remove { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: background 0.2s; }
+    .btn-remove:hover { background-color: #bb2d3b; }
+    
+    .back-link { display: inline-block; margin-bottom: 20px; color: var(--primary-color, #0d6efd); text-decoration: none; font-weight: 600; }
+    .user-session-bar { background: #eef2f7; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .user-session-bar input { padding: 4px 8px; width: 60px; font-weight: bold; }
+    .order-card { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color, #e9ecef); }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="logo-container">
+      <img src="assets/codegnan-logo.jpeg" alt="Codegnan Logo" class="logo">
+      <h2>Shop Fusion - Cart & Orders</h2>
+    </div>
+    <div class="header-actions">
+      <a href="index.html" class="btn-auth btn-signin">Back to Home</a>
+    </div>
+  </header>
+
+  <main class="cart-container">
+    <a href="index.html" class="back-link">← Continue Shopping</a>
+    
+    <!-- User ID Session Bar -->
+    <div class="user-session-bar">
+      <label for="activeUserId"><strong>Active User ID:</strong></label>
+      <input type="number" id="activeUserId" value="1" onchange="reloadCartAndOrders()">
+      <span style="color: #6c757d; font-size: 12px;">(Change to view specific user data)</span>
+    </div>
+
+    <h2>🛒 Your Cart Items</h2>
+    <div id="cartItemsList">
+      <p>Loading cart items...</p>
+    </div>
+
+    <div class="cart-summary" id="cartSummarySection" style="display: none;">
+      <button onclick="handleCheckoutCart()" class="btn-checkout">Proceed to Checkout</button>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
+    <h2>📦 Your Order History</h2>
+    <div id="orderHistoryList" style="margin-top: 15px;">
+      <p>Loading orders...</p>
+    </div>
+  </main>
+
+  <script>
+    const CART_API_URL = "http://localhost:8090/api/cart";
+    const ORDER_API_URL = "http://localhost:8090/api/orders";
+
+    function getUserId() {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+      if (currentUser && currentUser.id) return currentUser.id;
+      
+      const input = document.getElementById("activeUserId");
+      return input ? input.value : 1;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      reloadCartAndOrders();
+    });
+
+    function reloadCartAndOrders() {
+      loadCartItems();
+      loadUserOrders();
+    }
+
+    // 1. Fetch and render items in the cart
+    async function loadCartItems() {
+      const userId = getUserId();
+      const container = document.getElementById('cartItemsList');
+      const summarySec = document.getElementById('cartSummarySection');
+
+      container.innerHTML = '<p>Loading cart...</p>';
+
+      try {
+        const response = await fetch(`${CART_API_URL}/${userId}`);
+        if (!response.ok) throw new Error("Failed to load cart");
+
+        const items = await response.json();
+        
+        if (!items || items.length === 0) {
+          container.innerHTML = '<p style="color: var(--text-muted); padding: 10px 0;">Your cart is currently empty.</p>';
+          summarySec.style.display = 'none';
+          return;
+        }
+
+        container.innerHTML = items.map(item => `
+          <div class="cart-item-row">
+            <div>
+              <strong>Product ID: ${item.productId}</strong>
+              <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Price: ₹${item.price !== null && item.price !== undefined ? Number(item.price).toFixed(2) : '499.00'}</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 20px;">
+              <!-- Quantity Incrementor / Decrementor (Passes current quantity to check if it drops to 0) -->
+              <div class="qty-control">
+                <button class="qty-btn" onclick="updateItemQuantity(${item.productId}, ${item.quantity}, -1)">-</button>
+                <span style="font-weight: 700; min-width: 20px; text-align: center;">${item.quantity}</span>
+                <button class="qty-btn" onclick="updateItemQuantity(${item.productId}, ${item.quantity}, 1)">+</button>
+              </div>
+              <button onclick="handleRemoveFromCart(${item.productId})" class="btn-remove">Remove</button>
+            </div>
+          </div>
+        `).join('');
+
+        summarySec.style.display = 'block';
+      } catch (error) {
+        console.error("Cart fetch error:", error);
+        container.innerHTML = '<p style="color: red;">Could not connect to backend server on port 8090.</p>';
+        summarySec.style.display = 'none';
+      }
+    }
+
+    // 2. Update Quantity via Delta (+1 or -1) - Automatically removes item if quantity reaches 0
+    async function updateItemQuantity(productId, currentQuantity, delta) {
+      const newQuantity = currentQuantity + delta;
+      const userId = getUserId();
+
+      if (newQuantity <= 0) {
+        handleRemoveFromCart(productId);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${CART_API_URL}/add?userId=${userId}&productId=${productId}&quantity=${delta}`, {
+          method: "POST"
+        });
+
+        if (!response.ok) throw new Error("Failed to update quantity.");
+
+        loadCartItems(); // Refresh cart list instantly
+      } catch (error) {
+        console.error("Quantity update error:", error);
+        alert("Could not update item quantity.");
+      }
+    }
+
+    // 3. Remove Item completely from Cart (DELETE /api/cart/remove)
+    async function handleRemoveFromCart(productId) {
+      const userId = getUserId();
+
+      try {
+        const response = await fetch(`${CART_API_URL}/remove?userId=${userId}&productId=${productId}`, {
+          method: "DELETE"
+        });
+
+        if (!response.ok) throw new Error("Failed to remove item from cart.");
+
+        loadCartItems(); // Refresh cart list instantly
+      } catch (error) {
+        console.error("Remove cart error:", error);
+        alert("Could not remove item from cart.");
+      }
+    }
+
+    // 4. Fetch and render user order history
+    async function loadUserOrders() {
+      const userId = getUserId();
+      const orderContainer = document.getElementById('orderHistoryList');
+
+      orderContainer.innerHTML = '<p>Loading orders...</p>';
+
+      try {
+        const response = await fetch(`${ORDER_API_URL}/${userId}`);
+        if (!response.ok) throw new Error("Failed to fetch orders");
+
+        const orders = await response.json();
+        
+        if (!orders || orders.length === 0) {
+          orderContainer.innerHTML = '<p style="color: var(--text-muted);">No past orders found.</p>';
+          return;
+        }
+
+        orderContainer.innerHTML = orders.map(order => `
+          <div class="order-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong>Order #${order.id}</strong>
+              <span style="color: #198754; font-weight: bold; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">${order.status}</span>
+            </div>
+            <p style="margin-top: 6px; font-size: 0.9rem; color: var(--text-muted);">Total Price: ₹${order.totalPrice ? order.totalPrice.toFixed(2) : '0.00'}</p>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error("Orders fetch error:", error);
+        orderContainer.innerHTML = '<p style="color: red;">Could not load order history.</p>';
+      }
+    }
+
+    // 5. Smooth Checkout Workflow Transition to checkout.html
+    async function handleCheckoutCart() {
+      const userId = getUserId();
+
+      try {
+        const cartResponse = await fetch(`${CART_API_URL}/${userId}`);
+        if (!cartResponse.ok) throw new Error("Failed to fetch cart for checkout.");
+        const items = await cartResponse.json();
+
+        if (!items || items.length === 0) {
+          alert("Your cart is empty!");
+          return;
+        }
+
+        // Smoothly redirect to your real-world checkout view page
+        window.location.href = "checkout.html";
+      } catch (error) {
+        console.error("Checkout error:", error);
+        alert("Failed to process checkout. Please try again.");
+      }
+    }
+  </script>
+</body>
+</html>

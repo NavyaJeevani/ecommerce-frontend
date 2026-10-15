@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Sign In</title>
+  <link rel="stylesheet" href="css/custom.css">
+  <style>
+    .auth-card {
+      max-width: 380px;
+      margin: 60px auto;
+      padding: 30px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #444; }
+    .form-group input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    .btn-submit { width: 100%; padding: 12px; background-color: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600; }
+    .btn-submit:hover { background-color: #0b5ed7; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <a href="index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
+        <h2>Shop Fusion</h2>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <div class="auth-card">
+      <h3 style="margin-bottom: 20px; text-align: center; color: #333;">Customer Sign In</h3>
+      <form id="signInForm">
+        <div class="form-group">
+          <label for="username">Username or Email</label>
+          <input type="text" id="username" placeholder="Enter username or email" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter password" required>
+        </div>
+        <button type="submit" class="btn-submit">Sign In</button>
+      </form>
+      <p style="margin-top: 15px; text-align: center; font-size: 14px;">
+        Don't have an account? <a href="signup.html" style="color: #0d6efd;">Sign Up here</a>
+      </p>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const signInForm = document.getElementById('signInForm');
+
+      if (!signInForm) {
+        console.error("Form element with ID 'signInForm' was not found in the DOM.");
+        return;
+      }
+
+      signInForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const payload = {
+          username: document.getElementById('username').value.trim(),
+          password: document.getElementById('password').value
+        };
+
+        try {
+          const response = await fetch('http://localhost:8090/rest/api/v1/auth/signin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.status === 'SUCCESS') {
+            localStorage.setItem('currentUser', JSON.stringify({
+              username: data.username,
+              firstName: data.firstName,
+              email: data.email
+            }));
+
+            alert(`Welcome back, ${data.firstName || 'Customer'}!`);
+            window.location.href = 'index.html';
+          } else {
+            alert(data.message || 'Invalid username/email or password.');
+          }
+        } catch (err) {
+          console.error('Error signing in:', err);
+          alert('Could not connect to backend server.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

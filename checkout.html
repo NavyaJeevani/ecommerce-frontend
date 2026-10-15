@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Shop Fusion</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .checkout-wrapper { max-width: 900px; margin: auto; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .checkout-section { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2, h3 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0; }
+        .form-row { margin-bottom: 15px; }
+        .form-row label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; color: #495057; }
+        .form-row input, .form-row select { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.95rem; box-sizing: border-box; }
+        .summary-item { margin: 12px 0; font-size: 15px; color: #555; display: flex; justify-content: space-between; }
+        .total-price { font-weight: bold; font-size: 18px; color: #0d6efd; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; display: flex; justify-content: space-between; }
+        .btn-confirm { background-color: #ff9f00; color: white; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; border-radius: 5px; margin-top: 20px; transition: background 0.2s; }
+        .btn-confirm:hover { background-color: #fb8c00; }
+        .back-link { display: inline-block; margin-bottom: 15px; color: #0d6efd; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <div class="checkout-wrapper">
+        <!-- Left Column: Shipping Address & Payment Options -->
+        <div class="checkout-section">
+            <a href="index.html" class="back-link">← Back to Home</a>
+            <h3>1. Shipping Address & Contact</h3>
+            
+            <div class="form-row">
+                <label>Full Name</label>
+                <input type="text" id="shipName" placeholder="Enter your full name" value="Navya Jeevani">
+            </div>
+            <div class="form-row">
+                <label>Street Address</label>
+                <input type="text" id="shipAddress" placeholder="Door No, Street Name" value="123 Main Street">
+            </div>
+            <div class="form-row" style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>City</label>
+                    <input type="text" id="shipCity" value="Hyderabad">
+                </div>
+                <div style="flex: 1;">
+                    <label>Pincode</label>
+                    <input type="text" id="shipPincode" value="500081">
+                </div>
+            </div>
+            <div class="form-row">
+                <label>Phone Number</label>
+                <input type="text" id="shipPhone" placeholder="Enter 10-digit mobile number" value="9876543210">
+            </div>
+
+            <h3 style="margin-top: 25px;">2. Payment Method</h3>
+            <div class="form-row">
+                <label>Select Payment Option</label>
+                <select id="paymentMethod">
+                    <option value="COD">Cash on Delivery (COD)</option>
+                    <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
+                    <option value="CARD">Credit / Debit Card</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Right Column: Order Summary & Placement -->
+        <div class="checkout-section">
+            <h2>Order Summary</h2>
+            <div class="summary-item"><span>Product ID:</span> <strong id="summaryProductId">--</strong></div>
+            <div class="summary-item"><span>Quantity:</span> <strong id="summaryQuantity">--</strong></div>
+            <div class="summary-item"><span>Price per item:</span> ₹<span id="summaryPrice">--</span></div>
+            <div class="summary-item"><span>Delivery Charges:</span> <span style="color: green; font-weight: bold;">FREE</span></div>
+            <div class="total-price"><span>Total Amount:</span> ₹<span id="summaryTotal">--</span></div>
+
+            <button class="btn-confirm" id="confirmOrderBtn">Place Order</button>
+        </div>
+    </div>
+
+    <script>
+        // Dynamic user ID helper function
+        function getCurrentUserId() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (currentUser && currentUser.id) return currentUser.id;
+            return 1; // Default fallback ID
+        }
+
+        const userId = getCurrentUserId();
+        const buyNowProductId = localStorage.getItem('buyNowProductId');
+        const buyNowQuantity = localStorage.getItem('buyNowQuantity');
+        const buyNowPrice = localStorage.getItem('buyNowPrice');
+
+        let checkoutItems = [];
+
+        // 1. Load data either from Buy Now localStorage or from the active cart
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (buyNowProductId && buyNowPrice) {
+                // Flow A: Single item from "Buy Now"
+                checkoutItems = [{
+                    productId: Number(buyNowProductId),
+                    quantity: Number(buyNowQuantity || 1),
+                    price: Number(buyNowPrice)
+                }];
+                renderSummary(checkoutItems);
+            } else {
+                // Flow B: Items coming from `cart.html`
+                try {
+                    const response = await fetch(`http://localhost:8090/api/cart/${userId}`);
+                    if (!response.ok) throw new Error("Failed to fetch cart items.");
+                    const cartItems = await response.json();
+
+                    if (!cartItems || cartItems.length === 0) {
+                        alert('No active checkout items found.');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+
+                    checkoutItems = cartItems.map(item => ({
+                        productId: item.productId,
+                        quantity: item.quantity,
+                        price: item.price || 499.00
+                    }));
+                    renderSummary(checkoutItems);
+                } catch (error) {
+                    console.error('Cart load error:', error);
+                    alert('Failed to load checkout details.');
+                    window.location.href = 'cart.html';
+                }
+            }
+        });
+
+        function renderSummary(items) {
+            const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
+            const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            document.getElementById('summaryProductId').innerText = items.length === 1 ? items[0].productId : `${items.length} items in cart`;
+            document.getElementById('summaryQuantity').innerText = totalCount;
+            document.getElementById('summaryPrice').innerText = items.length === 1 ? items[0].price.toFixed(2) : 'Various';
+            document.getElementById('summaryTotal').innerText = totalPrice.toFixed(2);
+        }
+
+        // 2. Handle the "Place Order" button click to send JSON payload to Spring Boot backend
+        document.getElementById('confirmOrderBtn').addEventListener('click', async () => {
+            const shippingName = document.getElementById('shipName').value.trim();
+            const shippingAddress = document.getElementById('shipAddress').value.trim();
+            const shippingCity = document.getElementById('shipCity').value.trim();
+            const shippingPincode = document.getElementById('shipPincode').value.trim();
+            const phone = document.getElementById('shipPhone').value.trim();
+            const paymentMethod = document.getElementById('paymentMethod').value;
+
+            if (!shippingName || !shippingAddress || !shippingCity || !shippingPincode || !phone) {
+                alert("Please fill in all shipping and contact details.");
+                return;
+            }
+
+            if (checkoutItems.length === 0) {
+                alert("No items to checkout.");
+                return;
+            }
+
+            const primaryItem = checkoutItems[0];
+
+            const orderPayload = {
+                userId: Number(userId),
+                productId: Number(primaryItem.productId),
+                quantity: Number(primaryItem.quantity),
+                price: Number(primaryItem.price),
+                shippingName: shippingName,
+                shippingAddress: shippingAddress,
+                shippingCity: shippingCity,
+                shippingPincode: shippingPincode,
+                phone: phone,
+                paymentMethod: paymentMethod
+            };
+
+            try {
+                const response = await fetch('http://localhost:8090/api/orders/buynow', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(orderPayload)
+                });
+
+                if (response.ok) {
+                    const orderResponse = await response.json();
+                    
+                    // Clear local storage checkout data
+                    localStorage.removeItem('buyNowProductId');
+                    localStorage.removeItem('buyNowQuantity');
+                    localStorage.removeItem('buyNowPrice');
+                    localStorage.removeItem('buyNowProductName');
+
+                    alert('Order placed successfully! Order ID: #' + orderResponse.id);
+                    window.location.href = 'index.html';
+                } else {
+                    alert('Failed to place order. Please check your backend logs.');
+                }
+            } catch (error) {
+                console.error('Error connecting to backend:', error);
+                alert('An error occurred while placing the order.');
+            }
+        });
+    </script>
+</body>
+</html>

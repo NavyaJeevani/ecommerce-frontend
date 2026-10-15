@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Sign Up</title>
+  <link rel="stylesheet" href="css/custom.css">
+  <style>
+    .auth-card {
+      max-width: 420px;
+      margin: 40px auto;
+      padding: 30px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 4px; font-weight: 600; color: #444; }
+    .form-group input { width: 100%; padding: 9px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    .btn-submit { width: 100%; padding: 12px; background-color: #198754; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 600; margin-top: 10px; }
+    .btn-submit:hover { background-color: #157347; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <a href="index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
+        <h2>Shop Fusion</h2>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <div class="auth-card">
+      <h3 style="margin-bottom: 20px; text-align: center; color: #333;">Create Account</h3>
+      <form id="signUpForm">
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" placeholder="First Name" required>
+        </div>
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" placeholder="Last Name" required>
+        </div>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="email@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="Choose username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Choose password" required>
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="text" id="phone" placeholder="Phone number (optional)">
+        </div>
+        <button type="submit" class="btn-submit">Sign Up</button>
+      </form>
+      <p style="margin-top: 15px; text-align: center; font-size: 14px;">
+        Already registered? <a href="signin.html" style="color: #0d6efd;">Sign In here</a>
+      </p>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const signUpForm = document.getElementById('signUpForm');
+
+      if (!signUpForm) {
+        console.error("Form element with ID 'signUpForm' was not found in the DOM.");
+        return;
+      }
+
+      signUpForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const payload = {
+          firstName: document.getElementById('firstName').value.trim(),
+          lastName: document.getElementById('lastName').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          username: document.getElementById('username').value.trim(),
+          password: document.getElementById('password').value,
+          phone: document.getElementById('phone').value.trim() || null
+        };
+
+        try {
+          const response = await fetch('http://localhost:8090/rest/api/v1/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.status === 'SUCCESS') {
+            alert('Registration successful! Please sign in.');
+            window.location.href = 'signin.html';
+          } else {
+            alert(data.message || 'Registration failed. Please check your inputs.');
+          }
+        } catch (err) {
+          console.error('Error signing up:', err);
+          alert('Could not connect to backend server.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
